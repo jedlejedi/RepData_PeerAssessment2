@@ -1,0 +1,42 @@
+---
+title: "Study of the health and economic impacts of severe weather events"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+This sudy...
+
+## Data Processing
+
+Load the NOAA Storm data into a data frame
+```{r cache=TRUE}
+data <- read.csv("repdata_data_StormData.csv.bz2", header=TRUE, quote="\"", sep=",")
+```
+
+Clean up the the data:
+* Convert all events type to lower cases
+* Fix some typos
+
+```{r}
+data$EVTYPE <- toupper(data$EVTYPE)
+
+data[data$EVTYPE=="AVALANCE",]$EVTYPE <- "AVALANCHE"
+data[data$EVTYPE=="BEACH EROSIN",]$EVTYPE <- "BEACH EROSION"
+```
+
+Calculate the total number of fatalities, injuries and damage to crop and properties per event types.
+
+```{r}
+etypes <- aggregate(cbind(FATALITIES, INJURIES, PROPDMG, CROPDMG) ~ EVTYPE, data = data, sum)
+```
+
+## Results
+
+
+
+
