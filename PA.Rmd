@@ -5,6 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
 ```
 
 ## Synopsis
@@ -18,25 +19,51 @@ Load the NOAA Storm data into a data frame
 data <- read.csv("repdata_data_StormData.csv.bz2", header=TRUE, quote="\"", sep=",")
 ```
 
-Clean up the the data:
-* Convert all events type to lower cases
-* Fix some typos
+We will look at the FATALITIES and INJURIES fields to estimate the impact of the weather events of population health we will look at the fields.
+
+To estimate the economic impact of these events, we will look at the damage to crop and properties. The total damage to crop and property can be calculated as follows: 
+DAMAGE = PROPDMG * 10 ^ PROPDMGEXP + CROPDMG * 10 ^ CROPDMGEXP
+
+The PROPDMGEXP and CROPDMGEXP however, need to be converted into a numerical value. This is the purpose of the exp_code_to_num function.
+
 
 ```{r}
-data$EVTYPE <- toupper(data$EVTYPE)
+exp_code_to_num <- function(code) {
+  num_exp <- as.integer(0)
+  num_exp <- ifelse(code %in% c("h", "H"), 2, num_exp)
+  num_exp <- ifelse(code %in% c("+", "k", "K"), 3, num_exp)
+  num_exp <- ifelse(code %in% c("M", "m"), 6, num_exp)
+  num_exp <- ifelse(code %in% c("B", "b"), 9, num_exp)
+  num_exp <- ifelse(code %in% c("?", "-"), 1, num_exp)
+  num_exp <- ifelse(code %in% c(""), 0, num_exp)
+  num_exp
+}
 
-data[data$EVTYPE=="AVALANCE",]$EVTYPE <- "AVALANCHE"
-data[data$EVTYPE=="BEACH EROSIN",]$EVTYPE <- "BEACH EROSION"
+data$PROPDMGEXPNUM <- exp_code_to_num(data$PROPDMGEXP) 
+data$CROPDMGEXPNUM <- exp_code_to_num(data$CROPDMGEXP) 
+
+data$DAMAGE <- data$PROPDMG * 10 ^ data$PROPDMGEXPNUM + data$CROPDMG * 10 ^ data$CROPDMGEXPNUM
+
+event_types <- aggregate(cbind(FATALITIES, INJURIES, DAMAGE) ~ EVTYPE, data = data, sum)
 ```
 
-Calculate the total number of fatalities, injuries and damage to crop and properties per event types.
-
-```{r}
-etypes <- aggregate(cbind(FATALITIES, INJURIES, PROPDMG, CROPDMG) ~ EVTYPE, data = data, sum)
-```
 
 ## Results
 
+### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+```{r}
+event_types$EVTYPE <- reorder(event_types$EVTYPE, -event_types$FATALITIES)
+top_events <- order(event_types$FATALITIES, decreasing = TRUE)[1:20]
+
+ggplot(event_types[top_events,], aes(x = EVTYPE, y = FATALITIES)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) +
+  xlab("Event Types") +
+  ylab("Fatalities") +
+  ggtitle("Number of deaths for various type of weather events in the United States")
+  
+```
 
 
 
