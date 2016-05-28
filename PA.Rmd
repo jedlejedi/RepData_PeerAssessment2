@@ -1,5 +1,5 @@
 ---
-title: "Study of the health and economic impacts of severe weather events"
+title: "Study of the health and economic impacts of severe weather events in the United States"
 output: html_document
 ---
 
@@ -10,22 +10,22 @@ library(ggplot2)
 
 ## Synopsis
 
-This sudy...
+In this study we look at the health and economic impact of various weather events in the United States. The study is based on the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. It appears that tornadoes have the largest health impact as measured by the number of fatalities and/or injuries. Floods have the largest economic impact as measured by the dollar value of the damages to crop and properties.
+
 
 ## Data Processing
 
-Load the NOAA Storm data into a data frame
+First we load the NOAA storm data into a data frame
 ```{r cache=TRUE}
 data <- read.csv("repdata_data_StormData.csv.bz2", header=TRUE, quote="\"", sep=",")
 ```
 
-We will look at the FATALITIES and INJURIES fields to estimate the impact of the weather events of population health we will look at the fields.
+We will look at the number of fatalities and injuries to estimate the impact of the weather events on populations. This information is stored in the FATALITIES and INJURIES fields of the NOAA storm dataset.
 
-To estimate the economic impact of these events, we will look at the damage to crop and properties. The total damage to crop and property can be calculated as follows: 
+We will use the total damage to crop and properties to estimate the economic impact of weather events. The total damage to crop and property can be derived from the PROPDMG, PROPDMGEXP, CROPDMG and CROPDMGEXP fields of the dataset using the formula below: 
 DAMAGE = PROPDMG * 10 ^ PROPDMGEXP + CROPDMG * 10 ^ CROPDMGEXP
 
 The PROPDMGEXP and CROPDMGEXP however, need to be converted into a numerical value. This is the purpose of the exp_code_to_num function.
-
 
 ```{r}
 exp_code_to_num <- function(code) {
@@ -38,19 +38,27 @@ exp_code_to_num <- function(code) {
   num_exp <- ifelse(code %in% c(""), 0, num_exp)
   num_exp
 }
+```
 
+We calculate the total damage to crop and property for each event in the dataset and store it the DAMAGE field.
+```{r}
 data$PROPDMGEXPNUM <- exp_code_to_num(data$PROPDMGEXP) 
 data$CROPDMGEXPNUM <- exp_code_to_num(data$CROPDMGEXP) 
 
 data$DAMAGE <- data$PROPDMG * 10 ^ data$PROPDMGEXPNUM + data$CROPDMG * 10 ^ data$CROPDMGEXPNUM
+```
 
+We calculate the number of fatalities and injuries as well as the total value of the damages to crop and properties for each event type.
+```{r}
 event_types <- aggregate(cbind(FATALITIES, INJURIES, DAMAGE) ~ EVTYPE, data = data, sum)
 ```
 
 
 ## Results
 
-### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+#### Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+Looking at the number of fatalities for each event type, tornadoes seem to have the largest impact.
 
 ```{r}
 event_types$EVTYPE <- reorder(event_types$EVTYPE, -event_types$FATALITIES)
@@ -60,10 +68,41 @@ ggplot(event_types[top_events,], aes(x = EVTYPE, y = FATALITIES)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) +
   xlab("Event Types") +
-  ylab("Fatalities") +
+  ylab("Number of Fatalities") +
   ggtitle("Number of deaths for various type of weather events in the United States")
   
 ```
 
+Looking at the number of injuries for each event type, yields to the same result.
 
+```{r}
+event_types$EVTYPE <- reorder(event_types$EVTYPE, -event_types$INJURIES)
+top_events <- order(event_types$INJURIES, decreasing = TRUE)[1:20]
+
+ggplot(event_types[top_events,], aes(x = EVTYPE, y = INJURIES)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) +
+  xlab("Event Types") +
+  ylab("Number of Injuries") +
+  ggtitle("Number of injuries for various type of weather events in the United States")
+```
+
+Tornadoes (EVTYPE = TORNADO) seem to have the largest health impact on populations in the United States.
+
+#### Across the United States, which types of events have the greatest economic consequences?
+
+Looking that the total damage to crop and properties, floods (EVTYPE = FLOOD) seem to have the largest economic impact.
+
+```{r}
+event_types$EVTYPE <- reorder(event_types$EVTYPE, -event_types$DAMAGE)
+top_events <- order(event_types$DAMAGE, decreasing = TRUE)[1:20]
+
+ggplot(event_types[top_events,], aes(x = EVTYPE, y = DAMAGE)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) +
+  xlab("Event Types") +
+  ylab("Damages (USD)") +
+  ggtitle("Econmic cost or various type of weather events in the United States")
+  
+```
 
